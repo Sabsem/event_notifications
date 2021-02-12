@@ -26,8 +26,8 @@
   <% end %>
 
   <div class="gravatar-with-child">
-    <%= author_avatar(@issue.author, :size => "50") %>
-    <%= assignee_avatar(@issue.assigned_to, :size => "22", :class => "gravatar-child") if @issue.assigned_to %>
+    <%= avatar(@issue.author, :size => "50", :title => l(:field_author)) %>
+    <%= avatar(@issue.assigned_to, :size => "22", :class => "gravatar gravatar-child", :title => l(:field_assigned_to)) if @issue.assigned_to %>
   </div>
 
 <div class="subject">
@@ -59,24 +59,25 @@
     rows.right l(:field_start_date), format_date(@issue.start_date), :class => 'start-date'
   end
   unless @issue.disabled_core_fields.include?('due_date')
-    rows.right l(:field_due_date), issue_due_date_details(@issue), :class => 'due-date'
+    rows.right l(:field_due_date), format_date(@issue.due_date), :class => 'due-date'
   end
   unless @issue.disabled_core_fields.include?('done_ratio')
     rows.right l(:field_done_ratio), progress_bar(@issue.done_ratio, :legend => "#{@issue.done_ratio}%"), :class => 'progress'
   end
   unless @issue.disabled_core_fields.include?('estimated_hours')
-    rows.right l(:field_estimated_hours), issue_estimated_hours_details(@issue), :class => 'estimated-hours'
-  end
+      rows.right l(:field_estimated_hours), issue_estimated_hours_details(@issue), :class => 'estimated-hours'
+    end
   if User.current.allowed_to?(:view_time_entries, @project) && @issue.total_spent_hours > 0
-    rows.right l(:label_spent_time), issue_spent_hours_details(@issue), :class => 'spent-time'
-  end
+      rows.right l(:label_spent_time), issue_spent_hours_details(@issue), :class => 'spent-time'
+    end
 end %>
 <%= render_half_width_custom_fields_rows(@issue) %>
 <%= call_hook(:view_issues_show_details_bottom, :issue => @issue) %>
 </div>
 
-<% if @issue.description? %>
+<% if @issue.description? || @issue.attachments.any? -%>
 <hr />
+<% if @issue.description? %>
 <div class="description">
   <div class="contextual">
   <%= link_to l(:button_quote), quoted_issue_path(@issue), :remote => true, :method => 'post', :class => 'icon icon-comment' if @issue.notes_addable? %>
@@ -88,11 +89,8 @@ end %>
   </div>
 </div>
 <% end %>
-<% if @issue.attachments.any? %>
-  <hr />
-  <p><strong><%=l(:label_attachment_plural)%></strong></p>
-  <%= link_to_attachments @issue, :thumbnails => true %>
-<% end %>
+<%= link_to_attachments @issue, :thumbnails => true %>
+<% end -%>
 
 <%= render_full_width_custom_fields_rows(@issue) %>
 
@@ -120,13 +118,31 @@ end %>
 
 </div>
 
-<%= render partial: 'action_menu_edit' if User.current.wants_comments_in_reverse_order? %>
-
-<div id="history">
-<%= render_tabs issue_history_tabs, issue_history_default_tab %>
+<% if @changesets.present? %>
+<div id="issue-changesets">
+<h3><%=l(:label_associated_revisions)%></h3>
+<%= render :partial => 'changesets', :locals => { :changesets => @changesets} %>
 </div>
+<% end %>
 
-<%= render partial: 'action_menu_edit' unless User.current.wants_comments_in_reverse_order? %>
+<% if @journals.present? %>
+<div id="history">
+<h3><%=l(:label_history)%></h3>
+<%= render :partial => 'history', :locals => { :issue => @issue, :journals => @journals } %>
+</div>
+<% end %>
+
+
+<div style="clear: both;"></div>
+<%= render :partial => 'action_menu' %>
+
+<div style="clear: both;"></div>
+<% if @issue.editable? %>
+  <div id="update" style="display:none;">
+  <h3><%= l(:button_edit) %></h3>
+  <%= render :partial => 'edit' %>
+  </div>
+<% end %>
 
 <% other_formats_links do |f| %>
   <%= f.link_to 'Atom', :url => {:key => User.current.rss_key} %>
